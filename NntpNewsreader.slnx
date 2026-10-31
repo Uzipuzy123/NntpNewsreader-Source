@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="Nntp.Console/Nntp.Console.csproj" />
+  <Project Path="Nntp.Core/Nntp.Core.csproj" />
+  <Project Path="Nntp.Tests/Nntp.Tests.csproj" />
+</Solution>

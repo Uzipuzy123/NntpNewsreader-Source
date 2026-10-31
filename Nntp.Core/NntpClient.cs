@@ -10,9 +10,33 @@ public class NntpClient
     }
 
     // Sends LIST and reads one newsgroup per line until the line ".".
-    public Task<IReadOnlyList<NewsgroupInfo>> ListAsync()
+    public async Task<IReadOnlyList<NewsgroupInfo>> ListAsync()
     {
-        throw new NotImplementedException();
+        await _connection.WriteLineAsync("LIST");
+
+        var firstLine = await _connection.ReadLineAsync()
+            ?? throw new IOException("The server closed the connection.");
+        var response = NntpResponse.Parse(firstLine);
+        if (response.Code != 215)
+        {
+            throw new NntpProtocolException(response);
+        }
+
+        var groups = new List<NewsgroupInfo>();
+        while (true)
+        {
+            var line = await _connection.ReadLineAsync()
+                ?? throw new IOException("The server closed the connection in the middle of the list.");
+
+            if (line == ".")
+            {
+                break;
+            }
+
+            groups.Add(NewsgroupInfo.Parse(line));
+        }
+
+        return groups;
     }
 }
 

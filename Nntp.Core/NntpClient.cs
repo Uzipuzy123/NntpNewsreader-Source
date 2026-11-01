@@ -33,6 +33,12 @@ public class NntpClient
         return GroupInfo.Parse(response.Text);
     }
 
+    // Sends HEAD and returns the article's Subject, or null if the article is gone (423).
+    public Task<string?> GetHeadlineAsync(long articleNumber)
+    {
+        throw new NotImplementedException();
+    }
+
     // Sends LIST and reads one newsgroup per line until the line ".".
     // maxGroups lets the caller stop early, because some servers have 100,000+ groups.
     public async Task<IReadOnlyList<NewsgroupInfo>> ListAsync(int? maxGroups = null)

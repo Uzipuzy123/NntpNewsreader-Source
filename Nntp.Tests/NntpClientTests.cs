@@ -49,6 +49,34 @@ public class NntpClientTests
     }
 
     [Fact]
+    public async Task ListAsync_stops_early_when_maxGroups_is_reached()
+    {
+        var connection = new FakeLineConnection(
+            "215 list of newsgroups follows",
+            "comp.lang.csharp 1500 1 y",
+            "comp.lang.java 900 1 y",
+            "comp.lang.python 700 1 y");
+        // No "." on purpose: we should stop after 2 groups, before ever reaching the end.
+        var client = new NntpClient(connection);
+
+        var groups = await client.ListAsync(maxGroups: 2);
+
+        Assert.Equal(2, groups.Count);
+    }
+
+    [Fact]
+    public async Task ReadGreetingAsync_reads_the_first_line_from_the_server()
+    {
+        var connection = new FakeLineConnection("200 welcome to the server");
+        var client = new NntpClient(connection);
+
+        var greeting = await client.ReadGreetingAsync();
+
+        Assert.Equal(200, greeting.Code);
+        Assert.Equal("welcome to the server", greeting.Text);
+    }
+
+    [Fact]
     public async Task ListAsync_throws_when_the_server_answers_with_an_error()
     {
         var connection = new FakeLineConnection("502 permission denied");

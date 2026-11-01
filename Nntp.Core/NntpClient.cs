@@ -9,8 +9,17 @@ public class NntpClient
         _connection = connection;
     }
 
+    // The server says hello ("200 welcome...") as soon as we connect, before we send anything.
+    public async Task<NntpResponse> ReadGreetingAsync()
+    {
+        var line = await _connection.ReadLineAsync()
+            ?? throw new IOException("The server closed the connection before saying hello.");
+        return NntpResponse.Parse(line);
+    }
+
     // Sends LIST and reads one newsgroup per line until the line ".".
-    public async Task<IReadOnlyList<NewsgroupInfo>> ListAsync()
+    // maxGroups lets the caller stop early, because some servers have 100,000+ groups.
+    public async Task<IReadOnlyList<NewsgroupInfo>> ListAsync(int? maxGroups = null)
     {
         await _connection.WriteLineAsync("LIST");
 
@@ -23,7 +32,8 @@ public class NntpClient
         }
 
         var groups = new List<NewsgroupInfo>();
-        while (true)
+        // Keep going while there is no limit, or while we have fewer groups than the limit.
+        while (maxGroups is null || groups.Count < maxGroups)
         {
             var line = await _connection.ReadLineAsync()
                 ?? throw new IOException("The server closed the connection in the middle of the list.");

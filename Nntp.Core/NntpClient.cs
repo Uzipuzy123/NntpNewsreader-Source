@@ -34,9 +34,42 @@ public class NntpClient
     }
 
     // Sends HEAD and returns the article's Subject, or null if the article is gone (423).
-    public Task<string?> GetHeadlineAsync(long articleNumber)
+    public async Task<string?> GetHeadlineAsync(long articleNumber)
     {
-        throw new NotImplementedException();
+        await _connection.WriteLineAsync($"HEAD {articleNumber}");
+
+        var firstLine = await _connection.ReadLineAsync()
+            ?? throw new IOException("The server closed the connection.");
+        var response = NntpResponse.Parse(firstLine);
+        if (response.Code == 423)
+        {
+            return null;
+        }
+        if (response.Code != 221)
+        {
+            throw new NntpProtocolException(response);
+        }
+
+        // Keep reading to the "." even after finding the subject, otherwise
+        // the leftover lines would be mistaken for the answer to the next command.
+        string? subject = null;
+        while (true)
+        {
+            var line = await _connection.ReadLineAsync()
+                ?? throw new IOException("The server closed the connection in the middle of the header.");
+
+            if (line == ".")
+            {
+                break;
+            }
+
+            if (line.StartsWith("Subject:", StringComparison.OrdinalIgnoreCase))
+            {
+                subject = line.Substring("Subject:".Length).Trim();
+            }
+        }
+
+        return subject;
     }
 
     // Sends LIST and reads one newsgroup per line until the line ".".

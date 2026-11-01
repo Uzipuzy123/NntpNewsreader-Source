@@ -74,6 +74,7 @@ public class NntpClient
 
     // Sends LIST and reads one newsgroup per line until the line ".".
     // maxGroups lets the caller stop early, because some servers have 100,000+ groups.
+    // The server keeps sending the rest, so close the connection afterwards instead of reusing it.
     public async Task<IReadOnlyList<NewsgroupInfo>> ListAsync(int? maxGroups = null)
     {
         await _connection.WriteLineAsync("LIST");

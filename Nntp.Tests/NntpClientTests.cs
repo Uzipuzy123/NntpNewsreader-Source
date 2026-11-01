@@ -111,6 +111,89 @@ public class NntpClientTests
     }
 
     [Fact]
+    public async Task GetHeadlineAsync_sends_the_HEAD_command_with_the_number()
+    {
+        var connection = new FakeLineConnection(
+            "221 817 <id@server> head follows",
+            "Subject: Hello everyone",
+            ".");
+        var client = new NntpClient(connection);
+
+        await client.GetHeadlineAsync(817);
+
+        Assert.Equal(new[] { "HEAD 817" }, connection.SentLines);
+    }
+
+    [Fact]
+    public async Task GetHeadlineAsync_returns_the_subject()
+    {
+        var connection = new FakeLineConnection(
+            "221 817 <id@server> head follows",
+            "From: someone@example.com",
+            "Subject: Hello everyone",
+            "Date: Sun, 1 Nov 2026 10:00:00 GMT",
+            ".");
+        var client = new NntpClient(connection);
+
+        var headline = await client.GetHeadlineAsync(817);
+
+        Assert.Equal("Hello everyone", headline);
+    }
+
+    [Fact]
+    public async Task GetHeadlineAsync_reads_all_header_lines_so_the_next_call_works()
+    {
+        var connection = new FakeLineConnection(
+            "221 817 <id@server> head follows",
+            "Subject: First",
+            "Date: Sun, 1 Nov 2026 10:00:00 GMT",
+            ".",
+            "221 816 <id2@server> head follows",
+            "Subject: Second",
+            ".");
+        var client = new NntpClient(connection);
+
+        await client.GetHeadlineAsync(817);
+        var second = await client.GetHeadlineAsync(816);
+
+        Assert.Equal("Second", second);
+    }
+
+    [Fact]
+    public async Task GetHeadlineAsync_finds_the_subject_in_any_letter_case()
+    {
+        var connection = new FakeLineConnection(
+            "221 817 <id@server> head follows",
+            "SUBJECT: Hello everyone",
+            ".");
+        var client = new NntpClient(connection);
+
+        var headline = await client.GetHeadlineAsync(817);
+
+        Assert.Equal("Hello everyone", headline);
+    }
+
+    [Fact]
+    public async Task GetHeadlineAsync_returns_null_when_the_article_is_gone()
+    {
+        var connection = new FakeLineConnection("423 no such article");
+        var client = new NntpClient(connection);
+
+        var headline = await client.GetHeadlineAsync(817);
+
+        Assert.Null(headline);
+    }
+
+    [Fact]
+    public async Task GetHeadlineAsync_throws_on_any_other_error()
+    {
+        var connection = new FakeLineConnection("412 no newsgroup selected");
+        var client = new NntpClient(connection);
+
+        await Assert.ThrowsAsync<NntpProtocolException>(() => client.GetHeadlineAsync(817));
+    }
+
+    [Fact]
     public async Task ListAsync_throws_when_the_server_answers_with_an_error()
     {
         var connection = new FakeLineConnection("502 permission denied");

@@ -18,9 +18,19 @@ public class NntpClient
     }
 
     // Sends GROUP to select a newsgroup. The server answers 211, or 411 if it doesn't exist.
-    public Task<GroupInfo> GroupAsync(string name)
+    public async Task<GroupInfo> GroupAsync(string name)
     {
-        throw new NotImplementedException();
+        await _connection.WriteLineAsync($"GROUP {name}");
+
+        var line = await _connection.ReadLineAsync()
+            ?? throw new IOException("The server closed the connection.");
+        var response = NntpResponse.Parse(line);
+        if (response.Code != 211)
+        {
+            throw new NntpProtocolException(response);
+        }
+
+        return GroupInfo.Parse(response.Text);
     }
 
     // Sends LIST and reads one newsgroup per line until the line ".".

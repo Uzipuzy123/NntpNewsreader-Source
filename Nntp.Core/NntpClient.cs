@@ -9,8 +9,15 @@ public class NntpClient
         _connection = connection;
     }
 
+    // The server says hello ("200 welcome...") as soon as we connect, before we send anything.
+    public Task<NntpResponse> ReadGreetingAsync()
+    {
+        throw new NotImplementedException();
+    }
+
     // Sends LIST and reads one newsgroup per line until the line ".".
-    public async Task<IReadOnlyList<NewsgroupInfo>> ListAsync()
+    // maxGroups lets the caller stop early, because some servers have 100,000+ groups.
+    public async Task<IReadOnlyList<NewsgroupInfo>> ListAsync(int? maxGroups = null)
     {
         await _connection.WriteLineAsync("LIST");
 

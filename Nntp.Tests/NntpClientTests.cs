@@ -194,6 +194,81 @@ public class NntpClientTests
     }
 
     [Fact]
+    public async Task GetArticleAsync_sends_the_ARTICLE_command_with_the_number()
+    {
+        var connection = new FakeLineConnection(
+            "220 817 <id@server> article follows",
+            "Subject: Hello",
+            "",
+            "Text.",
+            ".");
+        var client = new NntpClient(connection);
+
+        await client.GetArticleAsync(817);
+
+        Assert.Equal(new[] { "ARTICLE 817" }, connection.SentLines);
+    }
+
+    [Fact]
+    public async Task GetArticleAsync_returns_the_header_and_body()
+    {
+        var connection = new FakeLineConnection(
+            "220 817 <id@server> article follows",
+            "From: someone@example.com",
+            "Subject: Hello",
+            "",
+            "First line.",
+            "Second line.",
+            ".");
+        var client = new NntpClient(connection);
+
+        var article = await client.GetArticleAsync(817);
+
+        Assert.NotNull(article);
+        Assert.Equal(new[] { "From: someone@example.com", "Subject: Hello" }, article.Header);
+        Assert.Equal(new[] { "First line.", "Second line." }, article.Body);
+    }
+
+    [Fact]
+    public async Task GetArticleAsync_removes_the_extra_dot_from_dot_stuffed_lines()
+    {
+        // A text line starting with "." is sent with an extra "." so it can't be mistaken for the end.
+        var connection = new FakeLineConnection(
+            "220 817 <id@server> article follows",
+            "Subject: Hello",
+            "",
+            "..hidden file",
+            "..",
+            ".");
+        var client = new NntpClient(connection);
+
+        var article = await client.GetArticleAsync(817);
+
+        Assert.NotNull(article);
+        Assert.Equal(new[] { ".hidden file", "." }, article.Body);
+    }
+
+    [Fact]
+    public async Task GetArticleAsync_returns_null_when_the_article_is_gone()
+    {
+        var connection = new FakeLineConnection("423 no such article");
+        var client = new NntpClient(connection);
+
+        var article = await client.GetArticleAsync(817);
+
+        Assert.Null(article);
+    }
+
+    [Fact]
+    public async Task GetArticleAsync_throws_on_any_other_error()
+    {
+        var connection = new FakeLineConnection("412 no newsgroup selected");
+        var client = new NntpClient(connection);
+
+        await Assert.ThrowsAsync<NntpProtocolException>(() => client.GetArticleAsync(817));
+    }
+
+    [Fact]
     public async Task ListAsync_throws_when_the_server_answers_with_an_error()
     {
         var connection = new FakeLineConnection("502 permission denied");

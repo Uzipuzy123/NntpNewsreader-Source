@@ -61,3 +61,39 @@ for (var number = selected.Last; number >= oldest; number--)
         Console.WriteLine($"  {number}: {headline}");
     }
 }
+
+// Keep reading articles until the user presses Enter on an empty line.
+while (true)
+{
+    Console.Write("Type an article number to read (or press Enter to quit): ");
+    var input = Console.ReadLine();
+    if (string.IsNullOrEmpty(input))
+    {
+        break;
+    }
+
+    if (!long.TryParse(input, out var articleNumber))
+    {
+        Console.WriteLine("That is not a number.");
+        continue;
+    }
+
+    var article = await client.GetArticleAsync(articleNumber);
+    if (article == null)
+    {
+        Console.WriteLine("That article does not exist.");
+        continue;
+    }
+
+    Console.WriteLine();
+    foreach (var line in article.Header)
+    {
+        Console.WriteLine(line);
+    }
+    Console.WriteLine();
+    foreach (var line in article.Body)
+    {
+        Console.WriteLine(line);
+    }
+    Console.WriteLine();
+}

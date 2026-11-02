@@ -12,8 +12,7 @@ public class NntpClient
     // The server says hello ("200 welcome...") as soon as we connect, before we send anything.
     public async Task<NntpResponse> ReadGreetingAsync()
     {
-        var line = await _connection.ReadLineAsync()
-            ?? throw new IOException("The server closed the connection before saying hello.");
+        var line = await ReadLineAsync();
         return NntpResponse.Parse(line);
     }
 
@@ -22,8 +21,7 @@ public class NntpClient
     {
         await _connection.WriteLineAsync($"GROUP {name}");
 
-        var line = await _connection.ReadLineAsync()
-            ?? throw new IOException("The server closed the connection.");
+        var line = await ReadLineAsync();
         var response = NntpResponse.Parse(line);
         if (response.Code != 211)
         {
@@ -38,8 +36,7 @@ public class NntpClient
     {
         await _connection.WriteLineAsync($"HEAD {articleNumber}");
 
-        var firstLine = await _connection.ReadLineAsync()
-            ?? throw new IOException("The server closed the connection.");
+        var firstLine = await ReadLineAsync();
         var response = NntpResponse.Parse(firstLine);
         if (response.Code == 423)
         {
@@ -55,8 +52,7 @@ public class NntpClient
         string? subject = null;
         while (true)
         {
-            var line = await _connection.ReadLineAsync()
-                ?? throw new IOException("The server closed the connection in the middle of the header.");
+            var line = await ReadLineAsync();
 
             if (line == ".")
             {
@@ -77,8 +73,7 @@ public class NntpClient
     {
         await _connection.WriteLineAsync($"ARTICLE {articleNumber}");
 
-        var firstLine = await _connection.ReadLineAsync()
-            ?? throw new IOException("The server closed the connection.");
+        var firstLine = await ReadLineAsync();
         var response = NntpResponse.Parse(firstLine);
         if (response.Code == 423)
         {
@@ -92,8 +87,7 @@ public class NntpClient
         var lines = new List<string>();
         while (true)
         {
-            var line = await _connection.ReadLineAsync()
-                ?? throw new IOException("The server closed the connection in the middle of the article.");
+            var line = await ReadLineAsync();
 
             if (line == ".")
             {
@@ -119,8 +113,7 @@ public class NntpClient
     {
         await _connection.WriteLineAsync("LIST");
 
-        var firstLine = await _connection.ReadLineAsync()
-            ?? throw new IOException("The server closed the connection.");
+        var firstLine = await ReadLineAsync();
         var response = NntpResponse.Parse(firstLine);
         if (response.Code != 215)
         {
@@ -131,8 +124,7 @@ public class NntpClient
         // Keep going while there is no limit, or while we have fewer groups than the limit.
         while (maxGroups is null || groups.Count < maxGroups)
         {
-            var line = await _connection.ReadLineAsync()
-                ?? throw new IOException("The server closed the connection in the middle of the list.");
+            var line = await ReadLineAsync();
 
             if (line == ".")
             {
@@ -143,6 +135,13 @@ public class NntpClient
         }
 
         return groups;
+    }
+
+    // Reads one line. null means the server hung up, which is always an error here.
+    private async Task<string> ReadLineAsync()
+    {
+        return await _connection.ReadLineAsync()
+            ?? throw new IOException("The server closed the connection.");
     }
 }
 

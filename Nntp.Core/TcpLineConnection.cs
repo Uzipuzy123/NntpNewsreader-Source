@@ -26,8 +26,9 @@ public class TcpLineConnection : ILineConnection
 
         var stream = tcpClient.GetStream();
         // NNTP lines end in "\r\n". AutoFlush sends each line right away instead of buffering it.
-        var reader = new StreamReader(stream, Encoding.ASCII);
-        var writer = new StreamWriter(stream, Encoding.ASCII) { AutoFlush = true, NewLine = "\r\n" };
+        // Latin-1 keeps letters like æ, ø and é, which ASCII would turn into "?".
+        var reader = new StreamReader(stream, Encoding.Latin1);
+        var writer = new StreamWriter(stream, Encoding.Latin1) { AutoFlush = true, NewLine = "\r\n" };
 
         return new TcpLineConnection(tcpClient, reader, writer);
     }

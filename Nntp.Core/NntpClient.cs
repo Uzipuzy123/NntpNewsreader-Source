@@ -72,6 +72,46 @@ public class NntpClient
         return subject;
     }
 
+    // Sends ARTICLE and returns the whole article, or null if it is gone (423).
+    public async Task<Article?> GetArticleAsync(long articleNumber)
+    {
+        await _connection.WriteLineAsync($"ARTICLE {articleNumber}");
+
+        var firstLine = await _connection.ReadLineAsync()
+            ?? throw new IOException("The server closed the connection.");
+        var response = NntpResponse.Parse(firstLine);
+        if (response.Code == 423)
+        {
+            return null;
+        }
+        if (response.Code != 220)
+        {
+            throw new NntpProtocolException(response);
+        }
+
+        var lines = new List<string>();
+        while (true)
+        {
+            var line = await _connection.ReadLineAsync()
+                ?? throw new IOException("The server closed the connection in the middle of the article.");
+
+            if (line == ".")
+            {
+                break;
+            }
+
+            // Dot-stuffing: the server adds an extra "." to text lines that start with ".".
+            if (line.StartsWith('.'))
+            {
+                line = line.Substring(1);
+            }
+
+            lines.Add(line);
+        }
+
+        return Article.Parse(lines);
+    }
+
     // Sends LIST and reads one newsgroup per line until the line ".".
     // maxGroups lets the caller stop early, because some servers have 100,000+ groups.
     // The server keeps sending the rest, so close the connection afterwards instead of reusing it.
